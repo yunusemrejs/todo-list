@@ -13,6 +13,7 @@ function eventListeners() {
     form.addEventListener("submit", addTodo);
     document.addEventListener("DOMContentLoaded", loadAllTodosToUI);
     secondCardBody.addEventListener("click", deleteTodo);
+    secondCardBody.addEventListener("click", checkTodo);
     filter.addEventListener("keyup", filterTodos);
     clearButton.addEventListener("click", clearAllTodos);
 }
@@ -41,15 +42,28 @@ function filterTodos(e) {
     });
 }
 
+
+
+function checkTodo(e) {
+
+    if (e.target.classList.contains("checked-item")) {
+        e.target.closest("li").style.textDecoration = "line-through";
+        showAlert("success", "Todo Başarıyla Bitirildi...");
+    } else {
+        e.target.closest("li").style.textDecoration = "none";
+    }
+
+}
+
 function deleteTodo(e) {
     if (e.target.className === "fa fa-remove") {
-        e.target.parentElement.parentElement.remove();
-        deteleTodoFromStorage(e.target.parentElement.parentElement.textContent);
+        e.target.closest("li").remove();
+        deleteTodoFromStorage(e.target.closest("li").textContent);
         showAlert("success", "Todo Başarıyla Silindi...");
     }
 }
 
-function deteleTodoFromStorage(deletetodo) {
+function deleteTodoFromStorage(deletetodo) {
     let todos = getTodosFromStorage();
 
     todos.forEach(function (todo, index) {
@@ -115,15 +129,27 @@ function showAlert(type, message) {
 
 function addTodoToUI(newTodo) {
     const listItem = document.createElement("li");
+    const linkBar = document.createElement("div");
+    const checkInput = document.createElement("input");
     const link = document.createElement("a");
+
+    checkInput.type = "checkbox"
+    checkInput.className = "checked-item mr-1"
+
 
     link.href = "#";
     link.className = "delete-item";
     link.innerHTML = "<i class = 'fa fa-remove'></i>";
 
+    linkBar.className = "d-flex justify-content-between";
+    linkBar.appendChild(checkInput);
+    linkBar.appendChild(link);
+
     listItem.className = "list-group-item d-flex justify-content-between";
     listItem.appendChild(document.createTextNode(newTodo));
-    listItem.appendChild(link);
+    listItem.appendChild(linkBar);
+
+
 
     todoList.appendChild(listItem);
     todoInput.value = "";

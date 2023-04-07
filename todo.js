@@ -125,7 +125,7 @@ const handleTodoCheck = event => {
 };
 
 const handleFilter = event => {
-	if(!event.target.id !== "filter") return;
+	if(event.target.id !== "filter") return;
 	let filterValue = event.target.value.toLowerCase();
 	let listItems = [...todoList.children];
 

@@ -1,156 +1,185 @@
+let todoForm = document.querySelector('#todo-form');
+let todoInput = document.querySelector('#todo');
+let todoList = document.querySelector('.list-group');
+let firstCardBody = document.querySelectorAll('.card-body')[0];
+let secondCardBody = document.querySelectorAll('.card-body')[1];
+let filterInput = document.querySelector('#filter');
+let clearButton = document.querySelector('#clear-todos');
 
-const form = document.getElementById("todo-form");
-const todoInput = document.getElementById("todo");
-const todoList = document.getElementsByClassName("list-group")[0];
-const firstCardBody = document.querySelectorAll(".card-body")[0];
-const secondCardBody = document.querySelectorAll(".card-body")[1];
-const filter = document.querySelector("#filter");
-const clearButton = document.querySelector("#clear-todos");
+const setupEventListeners = () => {
+	todoForm.addEventListener('submit', handleTodoFormSubmit);
+	document.addEventListener('DOMContentLoaded', handleDocumentLoad);
+	secondCardBody.addEventListener('click', handleTodoDelete);
+	secondCardBody.addEventListener('click', handleTodoCheck);
+	filterInput.addEventListener('keyup', handleFilter);
+	clearButton.addEventListener('click', clearAllTodos);
+};
 
-eventListeners();
+const showAlert = (type, message) => {
+	let alert = document.createElement('div');
 
-function eventListeners() {
-    form.addEventListener("submit", addTodo);
-    document.addEventListener("DOMContentLoaded", loadAllTodosToUI);
-    secondCardBody.addEventListener("click", deleteTodo);
-    secondCardBody.addEventListener("click", checkTodo);
-    filter.addEventListener("keyup", filterTodos);
-    clearButton.addEventListener("click", clearAllTodos);
-}
+	alert.className = `alert alert-${type}`;
+	alert.textContent = message;
+	firstCardBody.appendChild(alert);
 
-function clearAllTodos(e) {
-    if (confirm("Tümünü Silmek İstediğinize Emin Misiniz?")) {
-        while (todoList.firstElementChild != null) {
-            todoList.removeChild(todoList.firstElementChild);
-        }
-        localStorage.removeItem("todos");
-    }
-}
+	setTimeout(() => alert.remove(), 1000);
+};
 
-function filterTodos(e) {
-    const filterValue = e.target.value.toLowerCase();
-    const listItems = document.querySelectorAll(".list-group-item");
-
-    listItems.forEach(function (listItem) {
-        const text = listItem.textContent.toLowerCase();
-        if (text.indexOf(filterValue) === -1) {
-            listItem.setAttribute("style", "display : none !important");
-        }
-        else {
-            listItem.setAttribute("style", "display : block");
-        }
-    });
-}
+const addEmptyMessage = () => {
+	let emptyMessage = document.createElement('li');
+	emptyMessage.id = 'empty-message';
+	emptyMessage.classList.add('list-group-item', 'text-center');
+	emptyMessage.textContent = 'Liste boş';
+	todoList.appendChild(emptyMessage);
+};
 
 
+const checkIsEmpty = listItems => {
+	let isEmpty = listItems.every(listItem => listItem.classList.contains('d-none')) || listItems.length == 0;
+	if (isEmpty){
+		addEmptyMessage();
+	}else {
+		let emptyMessage = document.querySelector('#empty-message');
+		if(emptyMessage) emptyMessage.remove();
+	}
+};
 
-function checkTodo(e) {
+const getTodos = () => {
+	let todos = localStorage.getItem('todos');
+	if (!todos || todos.length == 0) addEmptyMessage();
+	return todos ? JSON.parse(localStorage.getItem('todos')) : [];
+};
 
-    if (e.target.classList.contains("checked-item")) {
-        e.target.closest("li").style.textDecoration = "line-through";
-        showAlert("success", "Todo Başarıyla Bitirildi...");
-    } else {
-        e.target.closest("li").style.textDecoration = "none";
-    }
+const addTodoToStorage = todo => {
+	let todos = getTodos();
+	localStorage.setItem('todos', JSON.stringify([...todos, todo]));
+};
 
-}
+const deleteTodoFromStorage = todo => {
+	let todos = getTodos().filter(item => item.name !== todo);
+	localStorage.setItem('todos', JSON.stringify(todos));
+};
 
-function deleteTodo(e) {
-    if (e.target.className === "fa fa-remove") {
-        e.target.closest("li").remove();
-        deleteTodoFromStorage(e.target.closest("li").textContent);
-        showAlert("success", "Todo Başarıyla Silindi...");
-    }
-}
+const updateTodoInStorage = (todo, isCompleted) => {
+	let todos = getTodos().map(item => {
+		if (item.name === todo) {
+			item.status = isCompleted;
+		}
+		return item;
+	});
+	localStorage.setItem('todos', JSON.stringify(todos));
+};
 
-function deleteTodoFromStorage(deletetodo) {
-    let todos = getTodosFromStorage();
+const handleTodoFormSubmit = event => {
+	event.preventDefault();
 
-    todos.forEach(function (todo, index) {
-        if (todo === deletetodo) {
-            todos.splice(index, 1);
-        }
-    });
-    localStorage.setItem("todos", JSON.stringify(todos));
-}
+	let newTodo = {
+		name: todoInput.value.trim(),
+		status: false
+	};
 
-function loadAllTodosToUI() {
-    let todos = getTodosFromStorage();
+	if (!newTodo || newTodo.length < 2) {
+		showAlert('danger', 'Lütfen bir todo girin');
+	} else {
+		addTodoToUI(newTodo.name, newTodo.status);
+		addTodoToStorage(newTodo);
+		showAlert('success', 'Todo başarıyla eklendi');
+	}
+};
 
-    todos.forEach(function (todo) {
-        addTodoToUI(todo);
-    })
-}
+const handleDocumentLoad = () => {
+	let todos = getTodos();
+	todos.forEach(todo => addTodoToUI(todo.name, todo.status));
+};
 
-function addTodo(e) {
-    e.preventDefault();
-    const newTodo = todoInput.value.trim();
+const deleteTodo = listItem => {
+	let todoText = listItem.textContent;
 
-    if (newTodo === "") {
-        showAlert("danger", "Lütfen Bir Todo Girin");
-    }
-    else {
-        addTodoToUI(newTodo);
-        addTodoToStorage(newTodo);
-        showAlert("success", "Todo Başarıyla Eklendi...")
-    }
-}
+	deleteTodoFromStorage(todoText);
+	listItem.remove();
+	checkIsEmpty([...todoList.children]);
+};
 
-function getTodosFromStorage() {
-    let todos;
+const updateTodoCheck = (listItem, isCompleted) => {
+	listItem.style.textDecoration = isCompleted ? 'line-through' : 'none';
+	listItem.querySelector('.checked-item').checked = isCompleted;
+};
 
-    if (localStorage.getItem("todos") === null) {
-        todos = [];
-    }
-    else {
-        todos = JSON.parse(localStorage.getItem("todos"));
-    }
-    return todos;
-}
+const handleTodoDelete = event => {
+	if (!event.target.classList.contains('fa-remove')) return;
+	let listItem = event.target.closest('li');
+	deleteTodo(listItem);
+	showAlert('success', 'Todo başarıyla silindi');
+};
 
-function addTodoToStorage(newTodo) {
-    let todos = getTodosFromStorage();
+const handleTodoCheck = event => {
+	if(!event.target.classList.contains('checked-item')) return;
+	let isCompleted = event.target.checked;
+	let listItem = event.target.closest('li');
 
-    todos.push(newTodo);
-    localStorage.setItem("todos", JSON.stringify(todos));
-}
+	updateTodoCheck(listItem, isCompleted);
+	updateTodoInStorage(listItem.textContent, isCompleted);
 
-function showAlert(type, message) {
-    const alert = document.createElement("div");
+	let message = isCompleted ? 'Todo başarıyla bitirildi' : 'Todo başarıyla geri alındı';
+	showAlert('success', message);
+};
 
-    alert.className = `alert alert-${type}`
-    alert.textContent = message;
-    firstCardBody.appendChild(alert);
+const handleFilter = event => {
+	if(!event.target.id !== "filter") return;
+	let filterValue = event.target.value.toLowerCase();
+	let listItems = [...todoList.children];
 
-    setTimeout(function () {
-        alert.remove();
-    }, 1000);
-}
+	listItems.forEach(listItem => {
+		let text = listItem.textContent.toLowerCase();
+		let isMatch = text.includes(filterValue);
 
-function addTodoToUI(newTodo) {
-    const listItem = document.createElement("li");
-    const linkBar = document.createElement("div");
-    const checkInput = document.createElement("input");
-    const link = document.createElement("a");
+		listItem.classList.toggle('d-none', !isMatch);
+		listItem.classList.toggle('d-flex', isMatch);
+	});
 
-    checkInput.type = "checkbox"
-    checkInput.className = "checked-item mr-1"
+	checkIsEmpty(listItems);
+};
 
+const clearAllTodos = event => {
+	if (confirm('Tümünü silmek istediğinize emin misiniz?')) {
+		[...todoList.children].forEach(deleteTodo);
+		showAlert('success', 'Tüm todo başarıyla silindi');
+	}
+};
 
-    link.href = "#";
-    link.className = "delete-item";
-    link.innerHTML = "<i class = 'fa fa-remove'></i>";
+const addTodoToUI = (todo, isCompleted) => {
+	let listItem = document.createElement('li');
+	let linkBar = document.createElement('div');
+	let checkInput = document.createElement('input');
+	let link = document.createElement('a');
 
-    linkBar.className = "d-flex justify-content-between";
-    linkBar.appendChild(checkInput);
-    linkBar.appendChild(link);
+	checkInput.type = 'checkbox';
+	checkInput.classList.add('checked-item', 'mr-1');
 
-    listItem.className = "list-group-item d-flex justify-content-between";
-    listItem.appendChild(document.createTextNode(newTodo));
-    listItem.appendChild(linkBar);
+	link.href = '#';
+	link.classList.add('delete-item');
+	link.innerHTML = "<i class='fa fa-remove'></i>";
 
+	linkBar.classList.add('d-flex', 'justify-content-between');
+	linkBar.appendChild(checkInput);
+	linkBar.appendChild(link);
 
+	listItem.classList.add('list-group-item', 'd-flex', 'justify-content-between');
+	listItem.textContent = todo;
+	listItem.appendChild(linkBar);
 
-    todoList.appendChild(listItem);
-    todoInput.value = "";
-}
+	if (isCompleted) updateTodoCheck(listItem, isCompleted);
+	
+	let todoItems = [...todoList.children];
+	if (todoItems.length > 0) {
+		let lastTodoItem = todoItems[todoItems.length - 1];
+		todoList.insertBefore(listItem, lastTodoItem.nextSibling);
+	} else {
+		todoList.appendChild(listItem);
+	}
+
+	todoInput.value = '';
+	checkIsEmpty([...todoList.children]);
+};
+
+setupEventListeners();
